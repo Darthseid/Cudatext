@@ -1,0 +1,278 @@
+(*
+This Source Code Form is subject to the terms of the Mozilla Public
+License, v. 2.0. If a copy of the MPL was not distributed with this
+file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+Copyright (c) Alexey Torgashin
+*)
+unit formcolorsetup;
+
+{$mode objfpc}{$H+}
+
+interface
+
+uses
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ButtonPanel,
+  IniFiles, ColorBox, StdCtrls, ExtCtrls,
+  LazUTF8, LazFileUtils,
+  LCLType,
+  ec_SyntAnal,
+  ec_syntax_format,
+  formlexerstyle,
+  proc_msg,
+  proc_globdata,
+  proc_colors, Types;
+
+type
+  TApplyThemeEvent = procedure(const AColors: TAppTheme) of object;
+
+type
+  { TfmColorSetup }
+
+  TfmColorSetup = class(TForm)
+    bChange: TButton;
+    bNone: TButton;
+    bStyle: TButton;
+    ButtonPanel1: TButtonPanel;
+    ColorDialog1: TColorDialog;
+    List: TColorListBox;
+    ListStyles: TListBox;
+    PanelSyntax: TPanel;
+    PanelUi: TPanel;
+    procedure bChangeClick(Sender: TObject);
+    procedure bNoneClick(Sender: TObject);
+    procedure bStyleClick(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure HelpButtonClick(Sender: TObject);
+    procedure ListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure ListStylesDrawItem(Control: TWinControl; Index: Integer; ARect: TRect; State: TOwnerDrawState);
+    procedure OKButtonClick(Sender: TObject);
+  private
+    { private declarations }
+    FColorBg: TColor;
+    procedure UpdateList;
+    procedure Localize;
+  public
+    { public declarations }
+    Data: TAppTheme;
+    OnApply: TApplyThemeEvent;
+  end;
+
+implementation
+
+{$R *.lfm}
+
+{ TfmColorSetup }
+
+procedure TfmColorSetup.Localize;
+const
+  section = 'd_theme';
+var
+  ini: TIniFile;
+  fn: string;
+begin
+  fn:= GetAppLangFilename;
+  if not FileExists(fn) then exit;
+  ini:= TIniFile.Create(fn);
+  try
+    Caption:= ini.ReadString(section, '_', Caption);
+    with ButtonPanel1.OKButton do Caption:= msgButtonOk;
+    with ButtonPanel1.CancelButton do Caption:= msgButtonCancel;
+    with ButtonPanel1.HelpButton do Caption:= msgButtonApply;
+
+    with bChange do Caption:= ini.ReadString(section, 'ch', Caption);
+    with bNone do Caption:= ini.ReadString(section, 'non', Caption);
+    with bStyle do Caption:= ini.ReadString(section, 'sty', Caption);
+  finally
+    FreeAndNil(ini);
+  end;
+end;
+
+
+procedure TfmColorSetup.UpdateList;
+var
+  st: TecSyntaxFormat;
+  iColor: TAppThemeColorId;
+  iStyle: TAppThemeStyleId;
+  NPrevIndex: integer;
+begin
+  NPrevIndex:= List.ItemIndex;
+  List.Items.Clear;
+
+  for iColor:= Low(iColor) to High(iColor) do
+    List.Items.AddObject(Data.Colors[iColor].desc, TObject(PtrInt(Data.Colors[iColor].color)));
+
+  if ListStyles.Count=0 then
+    for iStyle:= Low(iStyle) to High(iStyle) do
+    begin
+      st:= Data.Styles[iStyle];
+      ListStyles.Items.AddObject(st.DisplayName, st);
+    end;
+
+  if NPrevIndex<List.Items.Count then
+    List.ItemIndex:= NPrevIndex;
+  List.Invalidate;
+end;
+
+procedure TfmColorSetup.bChangeClick(Sender: TObject);
+begin
+  ColorDialog1.Color:= PtrInt(List.Items.Objects[List.ItemIndex]);
+  if ColorDialog1.Execute then
+  begin
+    Data.Colors[TAppThemeColorId(List.ItemIndex)].color:= ColorDialog1.Color;
+    UpdateList;
+  end;
+end;
+
+procedure TfmColorSetup.bNoneClick(Sender: TObject);
+begin
+  Data.Colors[TAppThemeColorId(List.ItemIndex)].color:= clNone;
+  UpdateList;
+end;
+
+procedure TfmColorSetup.bStyleClick(Sender: TObject);
+var
+  st: TecSyntaxFormat;
+  Form: TfmLexerStyle;
+begin
+  if ListStyles.ItemIndex<0 then exit;
+  st:= TecSyntaxFormat(ListStyles.Items.Objects[ListStyles.ItemIndex]);
+
+  Form:= TfmLexerStyle.Create(nil);
+  with Form do
+  try
+    edColorFont.Selected:= st.Font.Color;
+    edColorBG.Selected:= st.BgColor;
+    edColorBorder.Selected:= st.BorderColorBottom;
+    edStyleType.ItemIndex:= Ord(st.FormatType);
+    chkBold.Checked:= fsBold in st.Font.Style;
+    chkItalic.Checked:= fsItalic in st.Font.Style;
+    chkStrik.Checked:= fsStrikeOut in st.Font.Style;
+    chkUnder.Checked:= fsUnderline in st.Font.Style;
+    cbBorderL.ItemIndex:= Ord(st.BorderTypeLeft);
+    cbBorderR.ItemIndex:= Ord(st.BorderTypeRight);
+    cbBorderT.ItemIndex:= Ord(st.BorderTypeTop);
+    cbBorderB.ItemIndex:= Ord(st.BorderTypeBottom);
+
+    if ShowModal=mrOk then
+    begin
+      st.Font.Color:= edColorFont.Selected;
+      st.BgColor:= edColorBG.Selected;
+      st.BorderColorBottom:= edColorBorder.Selected;
+      st.FormatType:= TecFormatType(edStyleType.ItemIndex);
+
+      st.Font.Style:= [];
+      if chkBold.Checked then st.Font.Style:= st.Font.Style+[fsBold];
+      if chkItalic.Checked then st.Font.Style:= st.Font.Style+[fsItalic];
+      if chkStrik.Checked then st.Font.Style:= st.Font.Style+[fsStrikeOut];
+      if chkUnder.Checked then st.Font.Style:= st.Font.Style+[fsUnderline];
+
+      st.BorderTypeLeft:= TecBorderLineType(cbBorderL.ItemIndex);
+      st.BorderTypeRight:= TecBorderLineType(cbBorderR.ItemIndex);
+      st.BorderTypeTop:= TecBorderLineType(cbBorderT.ItemIndex);
+      st.BorderTypeBottom:= TecBorderLineType(cbBorderB.ItemIndex);
+    end;
+  finally
+    Free
+  end;
+end;
+
+procedure TfmColorSetup.FormShow(Sender: TObject);
+begin
+  Localize;
+
+  Width:= AppScale(Width);
+  Height:= AppScale(Height);
+  List.Width:= AppScale(List.Width);
+  ListStyles.Width:= AppScale(ListStyles.Width);
+  UpdateFormOnTop(Self);
+
+  PanelUi.Align:= alClient;
+  PanelSyntax.Align:= alClient;
+
+  UpdateList;
+  List.ItemIndex:= 0;
+  ListStyles.ItemIndex:= 0;
+
+  FColorBg:= Data.Colors[apclEdTextBg].color;
+
+  if PanelUi.Visible then
+    ActiveControl:= List
+  else
+  if PanelSyntax.Visible then
+    ActiveControl:= ListStyles;
+end;
+
+procedure TfmColorSetup.HelpButtonClick(Sender: TObject);
+begin
+  if Assigned(OnApply) then
+    OnApply(Data);
+end;
+
+procedure TfmColorSetup.ListKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if (key=Ord(' ')) and (Shift=[]) then
+  begin
+    bChange.Click;
+    key:= 0;
+    exit
+  end;
+end;
+
+procedure TfmColorSetup.ListStylesDrawItem(Control: TWinControl; Index: Integer; ARect: TRect;
+  State: TOwnerDrawState);
+const
+  cIndent = 6;
+  cExample = ' Example ';
+var
+  C: TCanvas;
+  st: TecSyntaxFormat;
+  S: string;
+  NWidth: integer;
+begin
+  C:= (Control as TListbox).Canvas;
+  st:= ListStyles.Items.Objects[Index] as TecSyntaxFormat;
+
+  C.Brush.Color:= clWindow;
+  C.FillRect(ARect);
+
+  C.Font.Color:= st.Font.Color;
+  C.Font.Style:= st.Font.Style;
+  C.Brush.Color:= st.BgColor;
+  if st.BgColor=clNone then
+    C.Brush.Color:= FColorBg;
+
+  S:= cExample;
+  NWidth:= C.TextWidth(S);
+  C.TextOut(ARect.Right-NWidth, ARect.Top, S);
+
+  if st.BorderColorBottom<>clNone then
+  begin
+    C.Pen.Color:= st.BorderColorBottom;
+    C.Line(ARect.Right-NWidth, ARect.Bottom-2, ARect.Right, ARect.Bottom-2);
+  end;
+
+  if odSelected in State then
+  begin
+    C.Brush.Color:= clHighlight;
+    C.FillRect(ARect.Left, ARect.Top, ARect.Right-NWidth, ARect.Bottom);
+  end
+  else
+    C.Brush.Color:= clNone;
+
+  S:= ListStyles.Items[Index];
+  C.Font.Color:= clBlack;
+  C.Font.Style:= [];
+  C.TextOut(ARect.Left+cIndent, ARect.Top, S);
+end;
+
+procedure TfmColorSetup.OKButtonClick(Sender: TObject);
+begin
+  if Assigned(OnApply) then
+    OnApply(Data);
+  ModalResult:= mrOk;
+end;
+
+end.
+

@@ -1,0 +1,159 @@
+object fmAbout: TfmAbout
+  Left = 483
+  Height = 270
+  Top = 445
+  Width = 465
+  ActiveControl = ButtonPanel1
+  BorderIcons = [biSystemMenu]
+  BorderStyle = bsDialog
+  Caption = 'About'
+  ClientHeight = 270
+  ClientWidth = 465
+  KeyPreview = True
+  OnCreate = FormCreate
+  OnKeyDown = FormKeyDown
+  OnShow = FormShow
+  Position = poMainFormCenter
+  ShowInTaskBar = stNever
+  LCLVersion = '2.1.0.0'
+  Scaled = False
+  object LabelName: TLabel
+    Left = 152
+    Height = 15
+    Top = 64
+    Width = 49
+    Caption = 'CudaText'
+    ParentColor = False
+  end
+  object labelVersion: TLabel
+    AnchorSideLeft.Control = LabelName
+    AnchorSideTop.Control = LabelName
+    AnchorSideTop.Side = asrBottom
+    Left = 152
+    Height = 15
+    Top = 91
+    Width = 38
+    BorderSpacing.Top = 12
+    Caption = 'Version'
+    ParentColor = False
+  end
+  object labelPlatform: TLabel
+    AnchorSideLeft.Control = LabelName
+    AnchorSideTop.Control = labelVersion
+    AnchorSideTop.Side = asrBottom
+    Left = 152
+    Height = 15
+    Top = 109
+    Width = 46
+    BorderSpacing.Top = 3
+    Caption = 'Platform'
+    ParentColor = False
+  end
+  object ButtonPanel1: TButtonPanel
+    Left = 6
+    Height = 26
+    Top = 238
+    Width = 453
+    OKButton.Name = 'OKButton'
+    OKButton.DefaultCaption = True
+    HelpButton.Name = 'HelpButton'
+    HelpButton.Caption = '&Credits'
+    HelpButton.OnClick = bCreditsClick
+    CloseButton.Name = 'CloseButton'
+    CloseButton.DefaultCaption = True
+    CancelButton.Name = 'CancelButton'
+    CancelButton.DefaultCaption = True
+    TabOrder = 0
+    ShowButtons = [pbOK, pbHelp]
+    ShowGlyphs = []
+    ShowBevel = False
+  end
+  object memo: TATSynEdit
+    Left = 288
+    Height = 160
+    Top = 24
+    Width = 293
+    BorderSpacing.Around = 6
+    DoubleBuffered = True
+    Font.Height = -12
+    Font.Name = 'Courier New'
+    ParentFont = False
+    TabOrder = 1
+    TabStop = True
+    Colors.TextFont = clBlack
+    Colors.TextBG = clWhite
+    Colors.TextDisabledFont = clGray
+    Colors.TextDisabledBG = 15790320
+    Colors.TextSelFont = clHighlightText
+    Colors.TextSelBG = clHighlight
+    Colors.Caret = clBlack
+    Colors.Markers = 192
+    Colors.GutterFont = clGray
+    Colors.GutterBG = 14737632
+    Colors.GutterCaretFont = clGray
+    Colors.GutterCaretBG = 13158600
+    Colors.GutterPlusBorder = clGray
+    Colors.GutterPlusBG = 16053492
+    Colors.GutterFoldLine = clGray
+    Colors.GutterFoldBG = 13158600
+    Colors.GutterSeparatorBG = clBlack
+    Colors.CurrentLineBG = 14741744
+    Colors.MarginRight = clSilver
+    Colors.MarginCaret = clLime
+    Colors.MarginUser = clYellow
+    Colors.IndentVertLines = clMedGray
+    Colors.BookmarkBG = clMoneyGreen
+    Colors.RulerFont = clGray
+    Colors.RulerBG = 14737632
+    Colors.CollapseLine = 10510432
+    Colors.CollapseMarkFont = 14712960
+    Colors.CollapseMarkBG = clCream
+    Colors.CollapseMarkBorder = 14712960
+    Colors.UnprintedFont = 5263600
+    Colors.UnprintedBG = 14737632
+    Colors.UnprintedHexFont = clMedGray
+    Colors.MinimapBorder = clSilver
+    Colors.MinimapSelBG = 15658734
+    Colors.MinimapTooltipBG = clMoneyGreen
+    Colors.MinimapTooltipBorder = clGray
+    Colors.StateChanged = 61680
+    Colors.StateAdded = 2146336
+    Colors.StateSaved = clMedGray
+    Colors.BlockStaple = clMedGray
+    Colors.BlockStapleForCaret = clNone
+    Colors.BlockSepLine = clMedGray
+    Colors.Links = clBlue
+    Colors.LockedBG = 14737632
+    Colors.TextHintFont = clGray
+    Colors.MarkedLinesBG = 15786160
+    Colors.BorderLine = clMedGray
+    Colors.BorderLineFocused = clNavy
+    Colors.ComboboxArrow = clGray
+    Colors.ComboboxArrowBG = 15790320
+    OptNonWordChars = '-+*=/\()[]{}<>"''.,:;~?!@#$%^&|`'#8230
+    OptShowURLsRegex = '\b(https?://|ftp://|magnet:\?|www\.)\w[^<>''"\s\(\)]+'
+    OptGutterVisible = False
+    OptRulerVisible = False
+    OptNumbersSkippedChar = '.'
+    OptUnprintedVisible = False
+  end
+  object PopupText: TPopupMenu
+    Left = 240
+    Top = 144
+    object mnuTextCopy: TMenuItem
+      Caption = 'Copy'
+      OnClick = mnuTextCopyClick
+    end
+    object mnuTextSel: TMenuItem
+      Caption = 'Select all'
+      OnClick = mnuTextSelClick
+    end
+    object MenuItem37: TMenuItem
+      Caption = '-'
+    end
+    object mnuTextOpenUrl: TMenuItem
+      Caption = 'Open URL'
+      OnClick = mnuTextOpenUrlClick
+    end
+  end
+end

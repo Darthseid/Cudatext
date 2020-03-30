@@ -1,0 +1,1342 @@
+(*
+This Source Code Form is subject to the terms of the Mozilla Public
+License, v. 2.0. If a copy of the MPL was not distributed with this
+file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+Copyright (c) Alexey Torgashin
+*)
+{$ifdef nn}begin end;{$endif}
+
+procedure TfmMain.DoOps_SaveOptionBool(const APath: string; AValue: boolean);
+var
+  cfg: TJSONConfig;
+begin
+  cfg:= TJSONConfig.Create(nil);
+  try
+    try
+      cfg.Formatted:= true; //needs last at__jsonconf.pp
+      cfg.Filename:= AppFile_OptionsUser;
+    except
+      exit;
+    end;
+
+    cfg.SetValue(APath, AValue);
+  finally
+    cfg.Free;
+  end;
+end;
+
+procedure TfmMain.DoOps_SaveThemes;
+var
+  cfg: TJSONConfig;
+begin
+  cfg:= TJSONConfig.Create(nil);
+  try
+    try
+      cfg.Formatted:= true;
+      cfg.FileName:= AppFile_OptionsUser;
+    except
+      exit
+    end;
+    cfg.SetValue('/ui_theme', UiOps.ThemeUi);
+    cfg.SetValue('/ui_theme_syntax', UiOps.ThemeSyntax);
+  finally
+    cfg.Free;
+  end;
+end;
+
+procedure TfmMain.DoOps_SaveHistory;
+var
+  cfg: TJSONConfig;
+  bMax: boolean;
+begin
+  cfg:= TJSONConfig.Create(nil);
+  try
+    try
+      cfg.Formatted:= true; //needs last at__jsonconf.pp
+      cfg.Filename:= AppFile_History;
+    except
+      exit;
+    end;
+
+    ////form
+    if not ShowFullscreen then
+    begin
+      bMax:= WindowState=wsMaximized;
+      cfg.SetValue('/dialog/max', bMax);
+      if bMax then
+        cfg.SetValue('/dialog/max_mon', Monitor.MonitorNum);
+
+      if not IsWindowMaximizedOrFullscreen then
+      begin
+        cfg.SetValue('/dialog/posx', Left);
+        cfg.SetValue('/dialog/posy', Top);
+        cfg.SetValue('/dialog/sizex', Width);
+        cfg.SetValue('/dialog/sizey', Height);
+      end;
+
+      if AppPanels[cPaneSide].Floating then
+      begin
+        cfg.SetValue('/dialog/fl_side/posx',  AppPanels[cPaneSide].FormFloat.Left);
+        cfg.SetValue('/dialog/fl_side/posy',  AppPanels[cPaneSide].FormFloat.Top);
+        cfg.SetValue('/dialog/fl_side/sizex', AppPanels[cPaneSide].FormFloat.Width);
+        cfg.SetValue('/dialog/fl_side/sizey', AppPanels[cPaneSide].FormFloat.Height);
+      end;
+
+      if AppPanels[cPaneOut].Floating then
+      begin
+        cfg.SetValue('/dialog/fl_btm/posx',  AppPanels[cPaneOut].FormFloat.Left);
+        cfg.SetValue('/dialog/fl_btm/posy',  AppPanels[cPaneOut].FormFloat.Top);
+        cfg.SetValue('/dialog/fl_btm/sizex', AppPanels[cPaneOut].FormFloat.Width);
+        cfg.SetValue('/dialog/fl_btm/sizey', AppPanels[cPaneOut].FormFloat.Height);
+      end;
+
+      if FloatGroups then
+      begin
+        cfg.SetValue('/dialog/fl_g1/posx',  FFormFloatGroups1.Left);
+        cfg.SetValue('/dialog/fl_g1/posy',  FFormFloatGroups1.Top);
+        cfg.SetValue('/dialog/fl_g1/sizex', FFormFloatGroups1.Width);
+        cfg.SetValue('/dialog/fl_g1/sizey', FFormFloatGroups1.Height);
+
+        cfg.SetValue('/dialog/fl_g2/posx',  FFormFloatGroups2.Left);
+        cfg.SetValue('/dialog/fl_g2/posy',  FFormFloatGroups2.Top);
+        cfg.SetValue('/dialog/fl_g2/sizex', FFormFloatGroups2.Width);
+        cfg.SetValue('/dialog/fl_g2/sizey', FFormFloatGroups2.Height);
+
+        cfg.SetValue('/dialog/fl_g3/posx',  FFormFloatGroups3.Left);
+        cfg.SetValue('/dialog/fl_g3/posy',  FFormFloatGroups3.Top);
+        cfg.SetValue('/dialog/fl_g3/sizex', FFormFloatGroups3.Width);
+        cfg.SetValue('/dialog/fl_g3/sizey', FFormFloatGroups3.Height);
+      end;
+
+      cfg.SetValue('show_sidepanel', AppPanels[cPaneSide].Visible);
+      cfg.SetValue('show_bottom', AppPanels[cPaneOut].Visible);
+
+      cfg.SetValue('float_side', AppPanels[cPaneSide].Floating);
+      cfg.SetValue('float_bottom', AppPanels[cPaneOut].Floating);
+
+      with AppPanels[cPaneSide] do
+        if not Floating then
+          cfg.SetValue('size_side', PanelSize);
+
+      with AppPanels[cPaneOut] do
+        if not Floating then
+          cfg.SetValue('size_bottom', PanelSize);
+
+      cfg.SetValue('tab_left', AppPanels[cPaneSide].LastActivePanel);
+    end;
+
+    ////recents
+    cfg.SetValue('/recent_files', FListRecents);
+
+    ////find dialog
+    if Assigned(fmFind) then
+    begin
+      cfg.SetValue('/list_find', fmFind.edFind.Items);
+      cfg.SetValue('/list_replace', fmFind.edRep.Items);
+      if fmFind.IsNarrow then
+      begin
+        cfg.SetValue('/find/pos_x', fmFind.Left);
+        cfg.SetValue('/find/pos_y', fmFind.Top);
+        cfg.SetValue('/find/size_x', fmFind.Width);
+      end;
+      cfg.SetValue('/find/multi_line', fmFind.IsMultiLine);
+    end;
+
+    cfg.SetValue('/list_console', fmConsole.EdInput.Items);
+
+    ////finder
+    cfg.SetValue('/finder/regex', FFinder.OptRegex);
+    cfg.SetValue('/finder/case', FFinder.OptCase);
+    cfg.SetValue('/finder/words', FFinder.OptWords);
+    cfg.SetValue('/finder/back', FFinder.OptBack);
+    cfg.SetValue('/finder/confirm', FFinder.OptConfirmReplace);
+    cfg.SetValue('/finder/wrap', FFinder.OptWrapped);
+    cfg.SetValue('/finder/insel', FFinder.OptInSelection);
+    cfg.SetValue('/finder/tokens', Ord(FFinder.OptTokens));
+
+    ////state
+    cfg.SetValue('lang', UiOps.LangName);
+    cfg.SetValue('session', IfThen(UiOps.ReopenSession, FSessionName, ''));
+    cfg.SetValue('last_cmd', FLastSelectedCommand);
+
+    DoOps_SaveHistory_GroupView(cfg);
+  finally
+    cfg.Free;
+  end;
+
+  if UiOps.ReopenSession then
+    DoOps_SaveSession(GetSessionFilename);
+end;
+
+
+function TfmMain.DoOps_SaveSession(const AFileName: string): boolean;
+var
+  cfg: TJSONConfig;
+  Frame: TEditorFrame;
+  Gr: TATGroups;
+  Pages: TATPages;
+  nLocalGroup, nGlobalGroup, nTab, i: integer;
+  nCountFiles: integer;
+  path, value: string;
+  bModified: boolean;
+begin
+  Result:= false;
+  if AFileName='' then exit;
+  DeleteFile(AFileName);
+
+  nCountFiles:= 0;
+
+  cfg:= TJSONConfig.Create(nil);
+  try
+    try
+      cfg.Formatted:= true;
+      cfg.Filename:= AFileName;
+    except
+      MsgBadConfig(AFileName);
+      exit;
+    end;
+
+    DoOps_SaveHistory_GroupView(cfg);
+
+    for i:= Low(TATGroupsNums) to High(TATGroupsNums) do
+      cfg.SetValue('/tab_index/g'+Inttostr(i), Groups.Pages[i].Tabs.TabIndex);
+    cfg.SetValue('/tab_index/g_active', Groups.PagesIndexOf(Groups.PagesCurrent));
+
+    cfg.SetValue('/panels/side_show', AppPanels[cPaneSide].Visible);
+    cfg.SetValue('/panels/side_panel', AppPanels[cPaneSide].LastActivePanel);
+
+    with AppPanels[cPaneSide] do
+      if not Floating then
+        cfg.SetValue('/panels/side_size', PanelSize);
+
+    cfg.SetValue('/panels/bottom_show', AppPanels[cPaneOut].Visible);
+    cfg.SetValue('/panels/bottom_panel', AppPanels[cPaneOut].LastActivePanel);
+
+    with AppPanels[cPaneOut] do
+      if not Floating then
+        cfg.SetValue('/panels/bottom_size', PanelSize);
+
+    for i:= 0 to FrameCount-1 do
+    begin
+      Inc(nCountFiles);
+      Frame:= Frames[i];
+      path:= '/'+Format('%3.3d', [i]);
+
+      GetFrameLocation(Frame, Gr, Pages, nLocalGroup, nGlobalGroup, nTab);
+      bModified:= Frame.Ed1.Modified or ((Frame.GetFileName(Frame.Ed1)='') and not Frame.IsEmpty);
+
+      cfg.SetValue(path+'/modified', bModified);
+      cfg.SetValue(path+'/file', SCollapseHomeDirInFilename(Frame.Filename));
+      cfg.SetValue(path+'/tab_title', Frame.TabCaption);
+      cfg.SetValue(path+'/group', nLocalGroup+1); //support old sessions with 1-based index
+
+      if Frame.IsText then value:= ''
+      else
+      if Frame.IsBinary then value:= 'bin,'+IntToStr(Ord(Frame.Binary.Mode))
+      else
+      if Frame.IsPicture then value:= 'pic';
+      cfg.SetValue(path+'/kind', value);
+
+      if bModified then
+      begin
+        cfg.SetValue(path+'/text', Frame.Editor.Text);
+        if Frame.FileName<>'' then
+          cfg.SetValue(path+'/file_date', FormatFileDateAsNiceString(Frame.FileName));
+      end;
+    end;
+
+    Result:= true;
+  finally
+    try
+      cfg.Free; //saves json file
+    except
+      //for incorrect sess folder
+    end;
+  end;
+
+  value:= 'Saved session: '+ExtractFileName(AFileName)+', '+IntToStr(nCountFiles)+' file(s)';
+  MsgLogConsole(value);
+end;
+
+function IsHistorySectionForFilename(const s: string): boolean;
+begin
+  Result:= StrToIntDef(s, -1)>=0;
+end;
+
+function TfmMain.DoOps_LoadSession(const AFileName: string): boolean;
+var
+  cfg: TJSONConfig;
+  Frame: TEditorFrame;
+  list: TStringlist;
+  sFilename, sTabTitle, sKind, sOpenOptions, item_path: string;
+  nCountFiles, nCountFilesModified: integer;
+  nIndex, i: integer;
+  Pages: TATPages;
+  bModified: boolean;
+  sText: UnicodeString;
+  sDateSaved, sDateCurrent: string;
+  Params: TAppVariantArray;
+  nTick: QWord;
+const
+  SOptionPassive = '/passive /nonear';
+begin
+  Result:= false;
+  if AFileName='' then exit;
+  if not FileExists(AFileName) then exit;
+
+  if not DoFileCloseAll(true) then exit;
+
+  nTick:= GetTickCount64;
+  nCountFiles:= 0;
+  nCountFilesModified:= 0;
+
+  cfg:= TJSONConfig.Create(nil);
+  list:= TStringList.Create;
+  try
+    try
+      cfg.Filename:= AFileName;
+    except
+      MsgBadConfig(AFileName);
+      exit;
+    end;
+
+    DoOps_LoadHistory_GroupView(cfg); //reads to variables
+    DoApplyInitialGroupSizes; //applies that variables
+
+    cfg.EnumSubKeys('/', list);
+    list.Sort;
+
+    for i:= 0 to list.Count-1 do
+    begin
+      //handle only sections like "000".."001"..etc, ignore sections like "panels", "gr"
+      item_path:= list[i];
+      if not IsHistorySectionForFilename(item_path) then Continue;
+      item_path:= '/'+item_path+'/';
+
+      sFilename:= cfg.GetValue(item_path+'file', '');
+      sFilename:= SExpandHomeDirInFilename(sFilename);
+      sTabTitle:= cfg.GetValue(item_path+'tab_title', '');
+      sText:= cfg.GetValue(item_path+'text', '');
+      sKind:= cfg.GetValue(item_path+'kind', '');
+      bModified:= cfg.GetValue(item_path+'modified', false);
+
+      //support old sessions with 1-based group index
+      nIndex:= cfg.GetValue(item_path+'group', 1)-1;
+
+      //check, if text saved in session, but file was changed outside
+      if bModified and (sFilename<>'') and FileExistsUTF8(sFileName) then
+      begin
+        sDateSaved:= cfg.GetValue(item_path+'file_date', '');
+        sDateCurrent:= FormatFileDateAsNiceString(sFilename);
+        if sDateSaved<>sDateCurrent then
+          if MsgBox(
+            msgConfirmFileChangedOutside+#10+sFilename+#10#10+
+            msgConfirmReloadIt+#10+
+            msgConfirmReloadItHotkeysSess,
+            MB_YESNO+MB_ICONQUESTION)=ID_YES then
+           bModified:= false;
+      end;
+
+      if (nIndex<Low(TATGroupsNums)) or (nIndex>High(TATGroupsNums)) then
+        nIndex:= Low(TATGroupsNums);
+      Pages:= Groups.Pages[nIndex];
+
+      if SBeginsWith(sKind, 'bin') then
+        sOpenOptions:= '/view-binary'
+      else
+        sOpenOptions:= '';
+
+      Frame:= nil;
+      //modified tabs must restore text, and set filename (if not empty)
+      if bModified then
+      begin
+        Inc(nCountFilesModified);
+        if (FrameCount>0) and Frames[0].IsEmpty then
+          Frame:= Frames[0]
+        else
+          Frame:= DoFileOpen('', '', Pages, SOptionPassive);
+        if sFilename<>'' then
+        begin
+          Frame.FileName:= sFilename;
+          Frame.TabCaption:= ExtractFileName(sFilename);
+        end;
+        Frame.Editor.Text:= sText;
+        Frame.Editor.Modified:= bModified;
+        if sTabTitle<>'' then
+          Frame.TabCaption:= sTabTitle;
+        Frame.UpdateModified(Frame.Editor);
+      end
+      else
+      //unmodified+named tabs must load file again
+      if FileExistsUTF8(sFilename) then
+      begin
+        Inc(nCountFiles);
+        Frame:= DoFileOpen(sFilename, '', Pages, sOpenOptions+SOptionPassive);
+      end;
+
+      if Assigned(Frame) then
+      begin
+        Frame.NotInRecents:= true;
+      end;
+    end;
+
+    //restore tab-index in all groups
+    for i:= Low(TATGroupsNums) to High(TATGroupsNums) do
+    begin
+      nIndex:= cfg.GetValue('/tab_index/g'+IntToStr(i), -1);
+      if (nIndex<0) or (nIndex>=Groups.Pages[i].Tabs.TabCount) then
+        nIndex:= 0;
+      Groups.Pages[i].Tabs.TabIndex:= nIndex;
+    end;
+
+    //restore group-index
+    nIndex:= cfg.GetValue('/tab_index/g_active', Low(TATGroupsNums));
+    if (nIndex>=Low(TATGroupsNums)) and (nIndex<=High(TATGroupsNums)) then
+    begin
+      Groups.PagesCurrent:= Groups.Pages[nIndex];
+      with Groups.PagesCurrent do
+        Tabs.TabIndex:= Tabs.TabIndex;
+    end;
+
+    //clear tick values, to CudaExt tab switcher feels good
+    //(it shows frames with tick=0 in second listbox)
+    for i:= 0 to FrameCount-1 do
+    begin
+      Frame:= Frames[i];
+      if Frame.Visible then
+        Frame.ActivationTime:= GetTickCount64
+      else
+        Frame.ActivationTime:= 0;
+    end;
+
+    //restore panel sizes
+    AppPanels[cPaneSide].Visible:= cfg.GetValue('/panels/side_show', AppPanels[cPaneSide].Visible);
+    AppPanels[cPaneOut].Visible:= cfg.GetValue('/panels/bottom_show', AppPanels[cPaneOut].Visible);
+
+    with AppPanels[cPaneSide] do
+      PanelSize:= Min(cfg.GetValue('/panels/side_size', PanelSize), ClientWidth div 2);
+
+    with AppPanels[cPaneOut] do
+      PanelSize:= Min(cfg.GetValue('/panels/bottom_size', PanelSize), ClientHeight div 2);
+
+    SText:= cfg.GetValue('/panels/side_panel', '');
+    if AppPanels[cPaneSide].Visible and (SText<>'') then
+      AppPanels[cPaneSide].UpdatePanels(SText, false, true);
+
+    SText:= cfg.GetValue('/panels/bottom_panel', '');
+    if AppPanels[cPaneOut].Visible and (SText<>'') then
+      AppPanels[cPaneOut].UpdatePanels(SText, false, true);
+
+    Result:= true;
+  finally
+    list.Free;
+    cfg.Free;
+  end;
+
+  nTick:= (GetTickCount64-nTick) div 10 * 10;
+
+  sText:= 'Loaded session: '+ExtractFileName(AFileName)+', '+IntToStr(nTick)+'ms, '+IntToStr(nCountFiles)+' file(s)';
+  if nCountFilesModified>0 then
+    sText+= ' + '+IntToStr(nCountFilesModified)+' modified';
+  MsgLogConsole(sText);
+
+  SetLength(Params, 1);
+  Params[0]:= AppVariant(APPSTATE_SESSION_LOAD);
+  DoPyEvent(nil, cEventOnState, Params);
+end;
+
+procedure TfmMain.DoOps_LoadHistory_GroupView(cfg: TJsonConfig);
+var
+  Sep: TATStringSeparator;
+  i: integer;
+begin
+  FOption_GroupMode:= TATGroupsMode(cfg.GetValue('groups', Ord(gmOne)));
+
+  Sep.Init(cfg.GetValue('/gr/panel', ''));
+  Sep.GetItemInt(FOption_GroupPanelSize.x, 50);
+  Sep.GetItemInt(FOption_GroupPanelSize.y, 50);
+
+  Sep.Init(cfg.GetValue('/gr/pages', ''));
+  for i in TATGroupsNums do
+  begin
+    Sep.GetItemInt(FOption_GroupSizes[i].x, 50);
+    Sep.GetItemInt(FOption_GroupSizes[i].y, 50);
+  end;
+end;
+
+procedure TfmMain.DoOps_SaveHistory_GroupView(cfg: TJsonConfig);
+var
+  SizePanel: TPoint;
+  SizePage: TATGroupsPoints;
+  S: string;
+  i: integer;
+begin
+  cfg.SetValue('groups', Ord(Groups.Mode));
+
+  Groups.GetSizes(SizePanel, SizePage);
+
+  S:= '';
+  for i in TATGroupsNums do
+    S+= Format('%d,%d,', [SizePage[i].x, SizePage[i].y]);
+
+  cfg.SetValue('/gr/panel', Format('%d,%d', [SizePanel.x, SizePanel.y]));
+  cfg.SetValue('/gr/pages', S);
+end;
+
+
+procedure DoOps_LoadFormRect(cfg: TJSONConfig; const path: string; var R: TRect);
+begin
+  R.Left:= cfg.GetValue(path+'/posx', R.Left);
+  R.Top:= cfg.GetValue(path+'/posy', R.Top);
+  R.Width:= cfg.GetValue(path+'/sizex', R.Width);
+  R.Height:= cfg.GetValue(path+'/sizey', R.Height);
+
+  FixRectPositionToDesktop(R);
+end;
+
+
+procedure TfmMain.DoOps_LoadHistory;
+//this should be called in OnCreate, to fix window flickering if window
+//was maximized (Win32).
+var
+  cfg: TJSONConfig;
+begin
+  cfg:= TJSONConfig.Create(nil);
+  try
+    try
+      cfg.Filename:= AppFile_History;
+    except
+      exit;
+    end;
+
+    DoOps_LoadFormRect(cfg, '/dialog', FBoundsMain);
+    DoOps_LoadFormRect(cfg, '/dialog/fl_side', AppPanels[cPaneSide].FormFloatBounds);
+    DoOps_LoadFormRect(cfg, '/dialog/fl_btm', AppPanels[cPaneOut].FormFloatBounds);
+    DoOps_LoadFormRect(cfg, '/dialog/fl_g1', FBoundsFloatGroups1);
+    DoOps_LoadFormRect(cfg, '/dialog/fl_g2', FBoundsFloatGroups2);
+    DoOps_LoadFormRect(cfg, '/dialog/fl_g3', FBoundsFloatGroups3);
+
+    //note: BoundsRect change works very long (150-200ms) on Linux gtk2
+    BoundsRect:= FBoundsMain;
+
+    FLastMaximized:= cfg.GetValue('/dialog/max', false);
+    FLastMaximizedMonitor:= cfg.GetValue('/dialog/max_mon', 0);
+
+    ////recents
+    cfg.GetValue('/recent_files', FListRecents, '');
+    cfg.GetValue('/list_console', fmConsole.EdInput.Items, '');
+    UpdateMenuRecent(nil);
+
+    ////finder
+    FFinder.OptRegex:= cfg.GetValue('/finder/regex', false);
+    FFinder.OptCase:= cfg.GetValue('/finder/case', false);
+    FFinder.OptWords:= cfg.GetValue('/finder/words', false);
+    FFinder.OptBack:= cfg.GetValue('/finder/back', false);
+    FFinder.OptConfirmReplace:= cfg.GetValue('/finder/confirm', false);
+    FFinder.OptWrapped:= cfg.GetValue('/finder/wrap', false);
+    FFinder.OptInSelection:= cfg.GetValue('/finder/insel', false);
+    FFinder.OptTokens:= TATFinderTokensAllowed(cfg.GetValue('/finder/tokens', 0));
+
+    ////state
+    AppPanels[cPaneSide].Visible:= cfg.GetValue('show_sidepanel', true);
+    AppPanels[cPaneOut].Visible:= cfg.GetValue('show_bottom', false);
+
+    AppPanels[cPaneSide].PanelSize:= Min(cfg.GetValue('size_side', 200), ClientWidth div 2);
+    AppPanels[cPaneOut].PanelSize:= Min(cfg.GetValue('size_bottom', 200), ClientHeight div 2);
+
+    AppPanels[cPaneSide].Floating:= cfg.GetValue('float_side', false);
+    AppPanels[cPaneOut].Floating:= cfg.GetValue('float_bottom', false);
+
+    //note: reading 'theme_ui', 'theme_syntax' from history is deprecated in 2019.09
+    //now it's read from user.json
+    if UiOps.ThemeUi_Loaded then
+      ThemeUi:= UiOps.ThemeUi
+    else
+      ThemeUi:= cfg.GetValue('theme_ui', '');
+
+    if UiOps.ThemeSyntax_Loaded then
+      ThemeSyntax:= UiOps.ThemeSyntax
+    else
+      ThemeSyntax:= cfg.GetValue('theme_syntax', '');
+
+    UiOps.LangName:= cfg.GetValue('lang', '');
+    if UiOps.LangName<>'' then
+      DoLocalize;
+
+    if FOption_AllowSession then
+    begin
+      FSessionName:= cfg.GetValue('session', FSessionName);
+      FLastSelectedCommand:= cfg.GetValue('last_cmd', FLastSelectedCommand);
+      DoOps_LoadHistory_GroupView(cfg);
+    end;
+
+    FOption_SidebarTab:= cfg.GetValue('tab_left', '');
+  finally
+    cfg.Free;
+  end;
+end;
+
+
+procedure TfmMain.DoApplyInitialSidebarPanel;
+var
+  S: string;
+begin
+  S:= FOption_SidebarTab;
+  //if plugin didnt load, caption not valid
+  if AppPanels[cPaneSide].CaptionToButtonIndex(S)<0 then
+    S:= msgPanelTree_Init;
+
+  if (S<>'-') and (S<>'') then
+    if AppPanels[cPaneSide].Visible then
+      AppPanels[cPaneSide].UpdatePanels(S, false, true);
+end;
+
+procedure TfmMain.DoApplyInitialWindowPos;
+var
+  Sep: TATStringSeparator;
+  NLeft, NTop, NWidth, NHeight: integer;
+begin
+  if FOption_WindowPos<>'' then
+  begin
+    Sep.Init(FOption_WindowPos);
+    Sep.GetItemInt(NLeft, Left);
+    Sep.GetItemInt(NTop, Top);
+    Sep.GetItemInt(NWidth, Width);
+    Sep.GetItemInt(NHeight, Height);
+    SetBounds(NLeft, NTop, NWidth, NHeight);
+  end;
+end;
+
+procedure TfmMain.DoApplyInitialGroupSizes;
+//groups sizes must be restored in OnShow, OnCreate is too early
+begin
+  Groups.Mode:= FOption_GroupMode;
+  Groups.SetSizes(FOption_GroupPanelSize, FOption_GroupSizes);
+  Groups.SaveSplitPos; //apply current sizes to internal Groups vars
+end;
+
+const
+  cDefaultKeymapFile: string =
+    '{ "cuda_comments,cmt_toggle_line_body": {"name": "plugin: Comments: Toggle line comment, at non-space char", "s1": ["Ctrl+/"], "s2": [] } }';
+
+procedure TfmMain.DoOps_LoadKeymap(AUseCache: boolean);
+var
+  F: TEditorFrame;
+  CurLexer: string;
+begin
+  //func called few times before OnShow because of OnTabFocus, disable these
+  if not FAllowLoadKeymap then exit;
+
+  if not FileExists(AppFile_Hotkeys) then
+    DoWriteStringToFile(AppFile_Hotkeys, cDefaultKeymapFile);
+
+  AppKeymap_ApplyUndoList(FKeymapUndoList);
+  DoOps_LoadKeymapFrom(AppFile_Hotkeys, nil);
+  FKeymapUndoList.Clear;
+
+  F:= CurrentFrame;
+  if F=nil then exit;
+
+  CurLexer:= F.LexerName[F.Editor];
+  if AUseCache then
+    //dont load lexer-specific cfg if tab changed, and same lexer active
+    if FLastLexerOfKeymap=CurLexer then exit;
+  FLastLexerOfKeymap:= CurLexer;
+
+  DoOps_LoadKeymapFrom(
+    GetAppKeymap_LexerSpecificConfig(FLastLexerOfKeymap),
+    FKeymapUndoList);
+end;
+
+
+procedure TfmMain.DoOps_LoadKeymapFrom(const AFilenameKeymap: string;
+  AUndoList: TATKeymapUndoList);
+var
+  cfg: TJSONConfig;
+  slist, skeys: TStringList;
+  //
+  procedure DoReadConfigToKeys(const path: string; var keys: TATKeyArray);
+  var
+    j: integer;
+  begin
+    FillChar(keys, SizeOf(keys), 0);
+    cfg.GetValue(path, skeys, '');
+    for j:= 0 to skeys.count-1 do
+      if skeys[j]<>'' then
+        keys.Data[j]:= TextToShortCut(skeys[j]);
+  end;
+  //
+var
+  UndoItem: TATKeymapUndoItem;
+  StrId: string;
+  ncmd, nitem, i: integer;
+begin
+  cfg:= TJSONConfig.Create(nil);
+  slist:= TStringList.Create;
+  skeys:= TStringList.Create;
+
+  try
+    try
+      cfg.Formatted:= true;
+      cfg.Filename:= AFilenameKeymap;
+    except
+      exit;
+    end;
+
+    cfg.EnumSubKeys('/', slist);
+    for i:= 0 to slist.count-1 do
+    begin
+      StrId:= slist[i];
+      ncmd:= DoOps_HotkeyStringId_To_CommandCode(StrId);
+      if ncmd<0 then Continue;
+
+      nitem:= AppKeymap.IndexOf(ncmd);
+      if nitem<0 then Continue;
+
+      if Assigned(AUndoList) then
+      begin
+        UndoItem:= TATKeymapUndoItem.Create;
+        UndoItem.StrId:= StrId;
+        UndoItem.KeyArray1:= AppKeymap[nitem].Keys1;
+        UndoItem.KeyArray2:= AppKeymap[nitem].Keys2;
+        AUndoList.Add(UndoItem);
+      end;
+
+      DoReadConfigToKeys(StrId+'/s1', AppKeymap[nitem].Keys1);
+      DoReadConfigToKeys(StrId+'/s2', AppKeymap[nitem].Keys2);
+    end;
+  finally
+    skeys.Free;
+    slist.Free;
+    cfg.Free;
+  end;
+end;
+
+
+procedure TfmMain.DoOps_LoadOptionsFromString(const AString: string);
+var
+  fn: string;
+begin
+  if AString='' then exit;
+  fn:= GetTempFileName+'.json';
+
+  with TFileStream.Create(fn, fmCreate) do
+  try
+    WriteBuffer(AString[1], Length(AString));
+  finally
+    Free;
+  end;
+
+  if FileExistsUTF8(fn) then
+  try
+    DoOps_LoadOptions(fn, EditorOps);
+    DoApplyAllOps;
+  finally
+    DeleteFileUTF8(fn);
+  end;
+end;
+
+
+procedure TfmMain.DoOps_LoadOptions_Global(cfg: TJSONConfig);
+var
+  List: TStringList;
+  s: string;
+begin
+  List:= TStringList.Create;
+  try
+    cfg.EnumValues('/plugin_groups', List);
+    for s in List do
+      AppConfig_PGroups.Add(s, cfg.GetValue('/plugin_groups/'+s, ''));
+
+    cfg.EnumValues('/detect', List);
+    for s in List do
+      AppConfig_Detect.Add(s, cfg.GetValue('/detect/'+s, ''));
+
+    cfg.EnumValues('/detect_line', List);
+    for s in List do
+      AppConfig_DetectLine.Add(s, cfg.GetValue('/detect_line/'+s, ''));
+  finally
+    FreeAndNil(List);
+  end;
+end;
+
+procedure TfmMain.DoOps_LoadOptions_Editor(cfg: TJSONConfig; var Op: TEditorOps);
+begin
+  Op.OpFontName:= FixFontMonospaced(cfg.GetValue(str_FontName, Op.OpFontName));
+  Op.OpFontName_i:= FixFontMonospaced(cfg.GetValue(str_FontName_i, Op.OpFontName_i));
+  Op.OpFontName_b:= FixFontMonospaced(cfg.GetValue(str_FontName_b, Op.OpFontName_b));
+  Op.OpFontName_bi:= FixFontMonospaced(cfg.GetValue(str_FontName_bi, Op.OpFontName_bi));
+
+  Op.OpFontSize:= Abs(cfg.GetValue(str_FontSize, Op.OpFontSize)); //Abs() for macOS
+  Op.OpFontSize_i:= Abs(cfg.GetValue(str_FontSize_i, Op.OpFontSize_i));
+  Op.OpFontSize_b:= Abs(cfg.GetValue(str_FontSize_b, Op.OpFontSize_b));
+  Op.OpFontSize_bi:= Abs(cfg.GetValue(str_FontSize_bi, Op.OpFontSize_bi));
+  Op.OpFontSize_original:= Op.OpFontSize;
+  Op.OpFontSize_original_i:= Op.OpFontSize_i;
+  Op.OpFontSize_original_b:= Op.OpFontSize_b;
+  Op.OpFontSize_original_bi:= Op.OpFontSize_bi;
+
+  Op.OpFontQuality:= TFontQuality(cfg.GetValue(str_FontQuality, Ord(Op.OpFontQuality)));
+  Op.OpFontLigatures:= cfg.GetValue(str_FontLigatures, Op.OpFontLigatures);
+
+  OptCharSizeProportional:= cfg.GetValue('unicode_proportional', OptCharSizeProportional);
+  OptCharSizeWideAllowed:= cfg.GetValue('unicode_wide_allowed', OptCharSizeWideAllowed);
+  OptCharScaleFullWidth:= cfg.GetValue('unicode_full_width', OptCharScaleFullWidth);
+
+  Op.OpSpacingY:= cfg.GetValue('spacing_y', Op.OpSpacingY);
+
+  Op.OpTabSize:= cfg.GetValue('tab_size', Op.OpTabSize);
+  Op.OpTabSpaces:= cfg.GetValue('tab_spaces', Op.OpTabSpaces);
+  Op.OpTabMaxPosExpanded:= cfg.GetValue('tab_max_pos_expanded', Op.OpTabMaxPosExpanded);
+
+  Op.OpOverwriteSel:= cfg.GetValue('ovr_sel', Op.OpOverwriteSel);
+  Op.OpOverwriteOnPaste:= cfg.GetValue('ovr_on_paste', Op.OpOverwriteOnPaste);
+
+  Op.OpUnderlineColorFiles:= cfg.GetValue('underline_color_files', Op.OpUnderlineColorFiles);
+  Op.OpUnderlineColorSize:= cfg.GetValue('underline_color_size', Op.OpUnderlineColorSize);
+
+  Op.OpLinks:= cfg.GetValue('links_hilite', Op.OpLinks);
+  Op.OpLinksRegex:= cfg.GetValue('links_regex', Op.OpLinksRegex);
+
+  Op.OpGutterShow:= cfg.GetValue('gutter_show', Op.OpGutterShow);
+  Op.OpGutterFold:= cfg.GetValue('gutter_fold', Op.OpGutterFold);
+  Op.OpGutterFoldAlways:= cfg.GetValue('gutter_fold_always', Op.OpGutterFoldAlways);
+  Op.OpGutterFoldIcons:= cfg.GetValue('gutter_fold_icons', Op.OpGutterFoldIcons);
+  Op.OpGutterBookmarks:= cfg.GetValue('gutter_bookmarks', Op.OpGutterBookmarks);
+
+  Op.OpNumbersShow:= cfg.GetValue('numbers_show', Op.OpNumbersShow);
+  //Op.OpNumbersFontSize:= cfg.GetValue('numbers_font_size', Op.OpNumbersFontSize);
+  Op.OpNumbersStyle:= cfg.GetValue('numbers_style', Op.OpNumbersStyle);
+  Op.OpNumbersForCarets:= cfg.GetValue('numbers_for_carets', Op.OpNumbersForCarets);
+  Op.OpNumbersCenter:= cfg.GetValue('numbers_center', Op.OpNumbersCenter);
+
+  Op.OpRulerShow:= cfg.GetValue('ruler_show', Op.OpRulerShow);
+  Op.OpRulerNumeration:= cfg.GetValue('ruler_numeration', Op.OpRulerNumeration);
+  Op.OpRulerMarkCaret:= cfg.GetValue('ruler_mark_caret', Op.OpRulerMarkCaret);
+  //Op.OpRulerTextIndent:= cfg.GetValue('ruler_text_indent', Op.OpRulerTextIndent);
+
+  Op.OpMinimapShow:= cfg.GetValue('minimap_show', Op.OpMinimapShow);
+  Op.OpMinimapShowSelAlways:= cfg.GetValue('minimap_sel_always', Op.OpMinimapShowSelAlways);
+  Op.OpMinimapShowSelBorder:= cfg.GetValue('minimap_sel_border', Op.OpMinimapShowSelBorder);
+  Op.OpMinimapCharWidth:= cfg.GetValue('minimap_char_width', Op.OpMinimapCharWidth);
+  Op.OpMinimapAtLeft:= cfg.GetValue('minimap_at_left', Op.OpMinimapAtLeft);
+  Op.OpMinimapTooltipShow:= cfg.GetValue('minimap_tooltip_show', Op.OpMinimapTooltipShow);
+  Op.OpMinimapTooltipLineCount:= cfg.GetValue('minimap_tooltip_line_count', Op.OpMinimapTooltipLineCount);
+  Op.OpMinimapTooltipWidth:= cfg.GetValue('minimap_tooltip_width', Op.OpMinimapTooltipWidth);
+
+  Op.OpMicromapShow:= cfg.GetValue('micromap_show', Op.OpMicromapShow);
+
+  Op.OpMarginFixed:= cfg.GetValue('margin', Op.OpMarginFixed);
+  Op.OpMarginString:= cfg.GetValue('margin_string', Op.OpMarginString);
+  Op.OpStaplesStyle:= cfg.GetValue('staples_style', Op.OpStaplesStyle);
+  Op.OpStaplesProps:= cfg.GetValue('staples_props', Op.OpStaplesProps);
+
+  Op.OpUnprintedShow:= cfg.GetValue('unprinted_show', Op.OpUnprintedShow);
+  Op.OpUnprintedContent:= cfg.GetValue('unprinted_content', Op.OpUnprintedContent);
+
+  Op.OpUnprintedReplaceSpec:= cfg.GetValue('unprinted_replace_spec', Op.OpUnprintedReplaceSpec);
+  Op.OpUnprintedReplaceToCode:= cfg.GetValue('unprinted_replace_to_code', Op.OpUnprintedReplaceToCode);
+
+  Op.OpUnprintedTabArrowLen:= cfg.GetValue('unprinted_tab_len', Op.OpUnprintedTabArrowLen);
+  Op.OpUnprintedSpaceDotScale:= cfg.GetValue('unprinted_space_dot_scale', Op.OpUnprintedSpaceDotScale);
+  //Op.OpUnprintedEndDotScale:= cfg.GetValue('unprinted_end_dot_scale', Op.OpUnprintedEndDotScale);
+  Op.OpUnprintedEndFontScale:= cfg.GetValue('unprinted_end_font_scale', Op.OpUnprintedEndFontScale);
+  Op.OpUnprintedTabPointerScale:= cfg.GetValue('unprinted_tab_ptr_scale', Op.OpUnprintedTabPointerScale);
+
+  Op.OpBracketHilite:= cfg.GetValue('bracket_highlight', Op.OpBracketHilite);
+  Op.OpBracketSymbols:= cfg.GetValue('bracket_symbols', op.OpBracketSymbols);
+  Op.OpBracketDistance:= cfg.GetValue('bracket_distance', op.OpBracketDistance);
+
+  Op.OpWrapMode:= cfg.GetValue('wrap_mode', Op.OpWrapMode);
+  Op.OpWrapIndented:= cfg.GetValue('wrap_indented', Op.OpWrapIndented);
+  Op.OpWrapEnabledMaxLines:= cfg.GetValue('wrap_enabled_max_lines', Op.OpWrapEnabledMaxLines);
+
+  Op.OpUndoLimit:= cfg.GetValue('undo_limit', Op.OpUndoLimit);
+  Op.OpUndoGrouped:= cfg.GetValue('undo_grouped', Op.OpUndoGrouped);
+  Op.OpUndoAfterSave:= cfg.GetValue('undo_after_save', Op.OpUndoAfterSave);
+
+  Op.OpCaretBlinkTime:= cfg.GetValue('caret_blink_time', Op.OpCaretBlinkTime);
+  Op.OpCaretBlinkEn:= cfg.GetValue('caret_blink_en', Op.OpCaretBlinkEn);
+  Op.OpCaretViewNormal:= cfg.GetValue('caret_view', Op.OpCaretViewNormal);
+  Op.OpCaretViewOverwrite:= cfg.GetValue('caret_view_ovr', Op.OpCaretViewOverwrite);
+  Op.OpCaretViewReadonly:= cfg.GetValue('caret_view_ro', Op.OpCaretViewReadonly);
+  Op.OpCaretVirtual:= cfg.GetValue('caret_after_end', Op.OpCaretVirtual);
+  Op.OpCaretMulti:= cfg.GetValue('caret_multi', Op.OpCaretMulti);
+  Op.OpCaretAfterPasteColumn:= cfg.GetValue('caret_after_paste_column', Op.OpCaretAfterPasteColumn);
+  Op.OpCaretsAddedToColumnSel:= cfg.GetValue('carets_with_column_sel', Op.OpCaretsAddedToColumnSel);
+  Op.OpCaretKeepVisibleOnScroll:= cfg.GetValue('caret_keep_visible_on_scroll', Op.OpCaretKeepVisibleOnScroll);
+
+  Op.OpShowCurLine:= cfg.GetValue('show_cur_line', Op.OpShowCurLine);
+  Op.OpShowCurLineMinimal:= cfg.GetValue('show_cur_line_minimal', Op.OpShowCurLineMinimal);
+  Op.OpShowCurLineOnlyFocused:= cfg.GetValue('show_cur_line_only_focused', Op.OpShowCurLineOnlyFocused);
+  Op.OpShowCurCol:= cfg.GetValue('show_cur_column', Op.OpShowCurCol);
+  Op.OpShowLastLineOnTop:= cfg.GetValue('show_last_line_on_top', Op.OpShowLastLineOnTop);
+  Op.OpShowFullBackgroundSel:= cfg.GetValue('show_full_sel_bg', Op.OpShowFullBackgroundSel);
+  Op.OpShowFullBackgroundSyntax:= cfg.GetValue('show_full_syntax_bg', Op.OpShowFullBackgroundSyntax);
+  Op.OpShowMouseSelFrame:= cfg.GetValue('show_mouse_sel_frame', Op.OpShowMouseSelFrame);
+  Op.OpCopyLineIfNoSel:= cfg.GetValue('copy_line_if_no_sel', Op.OpCopyLineIfNoSel);
+  Op.OpCutLineIfNoSel:= cfg.GetValue('cut_line_if_no_sel', Op.OpCutLineIfNoSel);
+  Op.OpCopyColumnAlignedBySpaces:= cfg.GetValue('copy_column_aligned_by_spaces', Op.OpCopyColumnAlignedBySpaces);
+  Op.OpSavingTrimSpaces:= cfg.GetValue('saving_trim_spaces', Op.OpSavingTrimSpaces);
+  Op.OpSavingTrimFinalEmptyLines:= cfg.GetValue('saving_trim_final_empty', Op.OpSavingTrimFinalEmptyLines);
+  Op.OpSavingForceFinalEol:= cfg.GetValue('saving_force_final_eol', Op.OpSavingForceFinalEol);
+  Op.OpShowHintOnVertScroll:= cfg.GetValue('show_hint_on_vert_scroll', Op.OpShowHintOnVertScroll);
+  Op.OpSmoothScroll:= cfg.GetValue('smooth_scroll', Op.OpSmoothScroll);
+  Op.OpCenteringWidth:= cfg.GetValue('centering_width', Op.OpCenteringWidth);
+  Op.OpCenteringForDistractionFree:= cfg.GetValue('centering_for_distraction_free', Op.OpCenteringForDistractionFree);
+  Op.OpScrollStyleHorz:= cfg.GetValue('scroll_style_horz', Op.OpScrollStyleHorz);
+
+  Op.OpLexerDynamicHiliteEnabled:= cfg.GetValue('lexer_dynamic_hilite', Op.OpLexerDynamicHiliteEnabled);
+  Op.OpLexerDynamicHiliteMaxLines:= cfg.GetValue('lexer_dynamic_hilite_max_lines', Op.OpLexerDynamicHiliteMaxLines);
+  Op.OpLexerLineSeparators:= false; //cfg.GetValue('lexer_line_separators', Op.OpLexerLineSeparators);
+  Op.OpZebra:= cfg.GetValue('zebra', Op.OpZebra);
+
+  Op.OpNonWordChars:= cfg.GetValue('nonword_chars', Op.OpNonWordChars);
+  Op.OpHexChars:= cfg.GetValue('hex_chars', Op.OpHexChars);
+  Op.OpFoldStyle:= cfg.GetValue('fold_style', Op.OpFoldStyle);
+  Op.OpFoldTooltipShow:= cfg.GetValue('fold_tooltip_show', Op.OpFoldTooltipShow);
+
+  Op.OpIndentAuto:= cfg.GetValue('indent_auto', Op.OpIndentAuto);
+  Op.OpIndentAutoKind:= cfg.GetValue('indent_kind', Op.OpIndentAutoKind);
+  Op.OpIndentSize:= cfg.GetValue('indent_size', Op.OpIndentSize);
+  Op.OpIndentAutoRule:= cfg.GetValue('indent_auto_rule', Op.OpIndentAutoRule);
+  Op.OpUnIndentKeepsAlign:= cfg.GetValue('unindent_keeps_align', Op.OpUnIndentKeepsAlign);
+  Op.OpIndentMakesWholeLineSel:= cfg.GetValue('indent_makes_whole_line_sel', Op.OpIndentMakesWholeLineSel);
+
+  Op.OpMouse2ClickDragSelectsWords:= cfg.GetValue('mouse_2click_drag_select_words', Op.OpMouse2ClickDragSelectsWords);
+  Op.OpMouseDragDrop:= cfg.GetValue('mouse_drag_drop', Op.OpMouseDragDrop);
+  Op.OpMouseDragDropFocusTarget:= cfg.GetValue('mouse_drag_drop_focus_target', Op.OpMouseDragDropFocusTarget);
+  Op.OpMouseMiddleClickNiceScroll:= cfg.GetValue('mouse_mid_click_scroll', Op.OpMouseMiddleClickNiceScroll);
+  Op.OpMouseMiddleClickPaste:= cfg.GetValue('mouse_mid_click_paste', Op.OpMouseMiddleClickPaste);
+  Op.OpMouseRightClickMovesCaret:= cfg.GetValue('mouse_rt_click_moves_caret', Op.OpMouseRightClickMovesCaret);
+  Op.OpMouseEnableColumnSelection:= cfg.GetValue('mouse_column_selection', Op.OpMouseEnableColumnSelection);
+  Op.OpMouseHideCursorOnType:= cfg.GetValue('mouse_hide_cursor', Op.OpMouseHideCursorOnType);
+  Op.OpMouseGutterClickSelectedLine:= cfg.GetValue('mouse_gutter_click_sel', Op.OpMouseGutterClickSelectedLine);
+  Op.OpMouseWheelZoom:= cfg.GetValue('mouse_wheel_zoom', Op.OpMouseWheelZoom);
+  Op.OpMouseWheelSpeedVert:= cfg.GetValue('mouse_wheel_speed_vert', Op.OpMouseWheelSpeedVert);
+  Op.OpMouseWheelSpeedHorz:= cfg.GetValue('mouse_wheel_speed_horz', Op.OpMouseWheelSpeedHorz);
+  Op.OpMouseClickNumberSelectsEol:= cfg.GetValue('mouse_click_number_selects_eol', Op.OpMouseClickNumberSelectsEol);
+  cSpeedScrollAutoVert:= cfg.GetValue('mouse_scroll_speed_vert', cSpeedScrollAutoVert);
+
+  Op.OpKeyBackspaceUnindent:= cfg.GetValue('key_bksp_unindent', Op.OpKeyBackspaceUnindent);
+  Op.OpKeyBackspaceWrap:= cfg.GetValue('key_bksp_wrap', Op.OpKeyBackspaceWrap);
+  Op.OpKeyTabIndents:= cfg.GetValue('key_tab_indents_sel', Op.OpKeyTabIndents);
+  Op.OpKeyHomeToNonSpace:= cfg.GetValue('key_home_to_nonspace', Op.OpKeyHomeToNonSpace);
+  Op.OpKeyHomeEndNavigateWrapped:= cfg.GetValue('key_home_end_nav_wrapped', Op.OpKeyHomeEndNavigateWrapped);
+  Op.OpKeyEndToNonSpace:= cfg.GetValue('key_end_to_nonspace', Op.OpKeyEndToNonSpace);
+  Op.OpKeyPageKeepsRelativePos:= cfg.GetValue('key_page_keeps_rel_pos', Op.OpKeyPageKeepsRelativePos);
+  Op.OpKeyPageUpDownSize:= cfg.GetValue('key_page_size', Op.OpKeyPageUpDownSize);
+  Op.OpKeyUpDownKeepColumn:= cfg.GetValue('key_up_down_keeps_column', Op.OpKeyUpDownKeepColumn);
+  Op.OpKeyUpDownNavigateWrapped:= cfg.GetValue('key_up_down_nav_wrapped', Op.OpKeyUpDownNavigateWrapped);
+  Op.OpKeyLeftRightSwapSel:= cfg.GetValue('key_left_right_swap_sel', Op.OpKeyLeftRightSwapSel);
+  Op.OpKeyLeftRightSwapSelAndSelect:= cfg.GetValue('key_left_right_swap_sel_and_select', Op.OpKeyLeftRightSwapSelAndSelect);
+end;
+
+
+procedure TfmMain.DoOps_LoadOptions_UiAutoCompletion(cfg: TJSONConfig);
+begin
+  UiOps.AutocompleteAutoshowCharCount:= cfg.GetValue('autocomplete_autoshow_chars', UiOps.AutocompleteAutoshowCharCount);
+  //UiOps.AutocompleteAutoshowLexers:= cfg.GetValue('autocomplete_autoshow_lexers', UiOps.AutocompleteAutoshowLexers);
+  UiOps.AutocompleteTriggerChars:= cfg.GetValue('autocomplete_trigger_chars', UiOps.AutocompleteTriggerChars);
+  UiOps.AutocompleteCommitChars:= cfg.GetValue('autocomplete_commit_chars', UiOps.AutocompleteCommitChars);
+  UiOps.AutocompleteCloseChars:= cfg.GetValue('autocomplete_close_chars', UiOps.AutocompleteCloseChars);
+  UiOps.AutocompleteAddOpeningBracket:= cfg.GetValue('autocomplete_add_opening_bracket', UiOps.AutocompleteAddOpeningBracket);
+  UiOps.AutocompleteUpDownAtEdge:= cfg.GetValue('autocomplete_up_down_at_edge', UiOps.AutocompleteUpDownAtEdge);
+  UiOps.AutoCloseBrackets:= cfg.GetValue('auto_close_brackets', UiOps.AutoCloseBrackets);
+end;
+
+procedure TfmMain.DoOps_LoadOptions_Ui(cfg: TJSONConfig);
+var
+  S: string;
+begin
+  UiOps.VarFontName:= cfg.GetValue(str_UiFontName, UiOps.VarFontName);
+  UiOps.VarFontSize:= Abs(cfg.GetValue(str_UiFontSize, UiOps.VarFontSize)); //Abs for macOS
+  UiOps.OutputFontName:= cfg.GetValue(str_UiFontOutputName, UiOps.OutputFontName);
+  UiOps.OutputFontSize:= Abs(cfg.GetValue(str_UiFontOutputSize, UiOps.OutputFontSize)); //Abs for macOS
+
+  UiOps.DoubleBuffered:= cfg.GetValue(str_UiDoubleBuffered, UiOps.DoubleBuffered);
+
+  UiOps.StatusNoSel:= cfg.GetValue('ui_statusbar_no_sel', UiOps.StatusNoSel);
+  UiOps.StatusSmallSel:= cfg.GetValue('ui_statusbar_small_sel', UiOps.StatusSmallSel);
+  UiOps.StatusStreamSel:= cfg.GetValue('ui_statusbar_str_sel', UiOps.StatusStreamSel);
+  UiOps.StatusColSel:= cfg.GetValue('ui_statusbar_col_sel', UiOps.StatusColSel);
+  UiOps.StatusCarets:= cfg.GetValue('ui_statusbar_carets', UiOps.StatusCarets);
+  UiOps.StatusPanels:= cfg.GetValue('ui_statusbar_panels', UiOps.StatusPanels);
+  //UiOps.StatusHeight:= cfg.GetValue('ui_statusbar_height', UiOps.StatusHeight); //assigned from "ui_tab_size_y"
+  UiOps.StatusTime:= Max(1, Min(60, cfg.GetValue('ui_statusbar_time', UiOps.StatusTime)));
+
+  UiOps.ShowActiveBorder:= cfg.GetValue('ui_active_border', UiOps.ShowActiveBorder);
+  UiOps.ShowTitlePath:= cfg.GetValue('ui_title_path', UiOps.ShowTitlePath);
+
+  UiOps.Scale:= cfg.GetValue('ui_scale'+cOptionSystemSuffix, 0);
+  UiOps.ScaleFont:= cfg.GetValue('ui_scale_font'+cOptionSystemSuffix, 100);
+  if UiOps.Scale=0 then
+   UiOps.Scale:= 100*Screen.PixelsPerInch div 96;
+
+  UiOps.ReopenSession:= cfg.GetValue('ui_reopen_session', UiOps.ReopenSession);
+  UiOps.AutoSaveSession:= cfg.GetValue('ui_auto_save_session', UiOps.AutoSaveSession);
+  //UiOps.FloatGroupsInTaskbar:= cfg.GetValue('ui_float_groups_in_taskbar', UiOps.FloatGroupsInTaskbar);
+  UiOps.OneInstance:= cfg.GetValue('ui_one_instance', UiOps.OneInstance);
+  UiOps.UndoPersistent:= cfg.GetValue('undo_persistent', UiOps.UndoPersistent);
+
+  UiOps.NotificationEnabled:= cfg.GetValue('ui_notif', UiOps.NotificationEnabled);
+  UiOps.NotificationTimeSeconds:= Max(1, cfg.GetValue('ui_notif_time', UiOps.NotificationTimeSeconds)); //don't allow 0
+
+  UiOps.NonTextFiles:= cfg.GetValue('ui_non_text', UiOps.NonTextFiles);
+  UiOps.NonTextFilesBufferKb:= Max(1, Min(1024, cfg.GetValue('ui_non_text_buffer', UiOps.NonTextFilesBufferKb)));
+  UiOps.ReloadFollowTail:= cfg.GetValue('ui_reload_tail', UiOps.ReloadFollowTail);
+  UiOps.ReloadUnsavedConfirm:= cfg.GetValue('ui_reload_unsaved_confirm', UiOps.ReloadUnsavedConfirm);
+  UiOps.FullScreen:= cfg.GetValue('ui_fullscreen', UiOps.FullScreen);
+
+  UiOps.MouseGotoDefinition:= cfg.GetValue('mouse_goto_definition', UiOps.MouseGotoDefinition);
+  //UiOps.LogDebug:= cfg.GetValue('log_debug', UiOps.LogDebug);
+  UiOps.LogConsole:= cfg.GetValue('log_console', UiOps.LogConsole);
+
+  UiOps.Emmet_AddSlashToEmptyTags:= cfg.GetValue('emmet_add_slash_to_empty_tags', UiOps.Emmet_AddSlashToEmptyTags);
+  UiOps.Emmet_CommentTags:= cfg.GetValue('emmet_comment_tags', UiOps.Emmet_CommentTags);
+  UiOps.Emmet_IndentNested:= cfg.GetValue('emmet_indent_nested', UiOps.Emmet_IndentNested);
+  UiOps.Emmet_SingleLine:= cfg.GetValue('emmet_single_line', UiOps.Emmet_SingleLine);
+  UiOps.Emmet_TrimLineMarkers:= cfg.GetValue('emmet_trim_line_markers', UiOps.Emmet_TrimLineMarkers);
+  UiOps.Emmet_WordWrap:= cfg.GetValue('emmet_word_wrap', UiOps.Emmet_WordWrap);
+
+  UiOps.HotkeyFindDialog:= cfg.GetValue('find_hotkey_find_dlg', UiOps.HotkeyFindDialog);
+  UiOps.HotkeyReplaceDialog:= cfg.GetValue('find_hotkey_replace_dlg', UiOps.HotkeyReplaceDialog);
+  UiOps.HotkeyFindFirst:= cfg.GetValue('find_hotkey_find_first', UiOps.HotkeyFindFirst);
+  UiOps.HotkeyFindNext:= cfg.GetValue('find_hotkey_find_next', UiOps.HotkeyFindNext);
+  UiOps.HotkeyFindPrev:= cfg.GetValue('find_hotkey_find_prev', UiOps.HotkeyFindPrev);
+  UiOps.HotkeyReplaceAndFindNext:= cfg.GetValue('find_hotkey_replace', UiOps.HotkeyReplaceAndFindNext);
+  UiOps.HotkeyReplaceNoFindNext:= cfg.GetValue('find_hotkey_replace_no_next', UiOps.HotkeyReplaceNoFindNext);
+  UiOps.HotkeyReplaceAll:= cfg.GetValue('find_hotkey_replace_all', UiOps.HotkeyReplaceAll);
+  UiOps.HotkeyReplaceGlobal:= cfg.GetValue('find_hotkey_replace_global', UiOps.HotkeyReplaceGlobal);
+  UiOps.HotkeyCountAll:= cfg.GetValue('find_hotkey_count_all', UiOps.HotkeyCountAll);
+  UiOps.HotkeyExtractAll:= cfg.GetValue('find_hotkey_extract', UiOps.HotkeyExtractAll);
+  UiOps.HotkeySelectAll:= cfg.GetValue('find_hotkey_select_all', UiOps.HotkeySelectAll);
+  UiOps.HotkeyMarkAll:= cfg.GetValue('find_hotkey_mark_all', UiOps.HotkeyMarkAll);
+  UiOps.HotkeyToggleRegex:= cfg.GetValue('find_hotkey_op_regex', UiOps.HotkeyToggleRegex);
+  UiOps.HotkeyToggleCaseSens:= cfg.GetValue('find_hotkey_op_case', UiOps.HotkeyToggleCaseSens);
+  UiOps.HotkeyToggleWords:= cfg.GetValue('find_hotkey_op_words', UiOps.HotkeyToggleWords);
+  UiOps.HotkeyToggleWrapped:= cfg.GetValue('find_hotkey_op_wrapped', UiOps.HotkeyToggleWrapped);
+  UiOps.HotkeyToggleInSelect:= cfg.GetValue('find_hotkey_op_in_sel', UiOps.HotkeyToggleInSelect);
+  UiOps.HotkeyToggleMultiline:= cfg.GetValue('find_hotkey_op_multiline', UiOps.HotkeyToggleMultiline);
+  UiOps.HotkeyToggleConfirmRep:= cfg.GetValue('find_hotkey_op_confirm_rep', UiOps.HotkeyToggleConfirmRep);
+  UiOps.HotkeyToggleTokens:= cfg.GetValue('find_hotkey_op_tokens', UiOps.HotkeyToggleTokens);
+
+  UiOps.LexerThemes:= cfg.GetValue('ui_lexer_themes', UiOps.LexerThemes);
+  UiOps.LexerMenuGrouped:= cfg.GetValue('ui_lexers_grouped', UiOps.LexerMenuGrouped);
+  UiOps.LexerDelayedParsingPause:= cfg.GetValue('lexer_delayed_parsing_pause', UiOps.LexerDelayedParsingPause);
+  UiOps.LexerDelayedParsingSize:= cfg.GetValue('lexer_delayed_parsing_size', UiOps.LexerDelayedParsingSize);
+  UiOps.LexerPostponeUntilShown:= cfg.GetValue('lexer_postpone_until_shown', UiOps.LexerPostponeUntilShown);
+  if not UiOps.LexerPostponeUntilShown then
+   AllowFrameParsing:= true;
+
+  UiOps.ShowMenubar:= cfg.GetValue('ui_menu_show', UiOps.ShowMenubar);
+  UiOps.ShowStatusbar:= cfg.GetValue('ui_statusbar_show', UiOps.ShowStatusbar);
+  UiOps.ShowToolbar:= cfg.GetValue('ui_toolbar_show', UiOps.ShowToolbar);
+
+  UiOps.SidebarShow:= cfg.GetValue('ui_sidebar_show', UiOps.SidebarShow);
+  UiOps.SidebarOnRight:= cfg.GetValue('ui_sidebar_on_right', UiOps.SidebarOnRight);
+  UiOps.SidebarTheme:= cfg.GetValue('ui_sidebar_theme', UiOps.SidebarTheme);
+  UiOps.TreeTheme:= cfg.GetValue('ui_tree_theme', UiOps.TreeTheme);
+  UiOps.ToolBarTheme:= cfg.GetValue('ui_toolbar_theme', UiOps.ToolBarTheme);
+
+  {$ifndef windows}
+  //option is ignored on win
+  UiOps.PyLibrary:= cfg.GetValue('pylib'+cOptionSystemSuffix, UiOps.PyLibrary);
+  {$endif}
+
+  UiOps.PictureTypes:= cfg.GetValue('picture_types', UiOps.PictureTypes);
+  UiOps.MaxFileSizeToOpen:= cfg.GetValue('ui_max_size_open', UiOps.MaxFileSizeToOpen);
+  UiOps.MaxFileSizeForLexer:= cfg.GetValue('ui_max_size_lexer', UiOps.MaxFileSizeForLexer);
+  UiOps.MaxRangesForCodeTree:= cfg.GetValue('ui_max_ranges_codetree', UiOps.MaxRangesForCodeTree);
+
+  UiOps.AutocompleteHtml:= cfg.GetValue('autocomplete_html', UiOps.AutocompleteHtml);
+  UiOps.AutocompleteCss:= cfg.GetValue('autocomplete_css', UiOps.AutocompleteCss);
+
+  UiOps.AutocompleteHtml_Lexers:= cfg.GetValue('autocomplete_html_lexers', UiOps.AutocompleteHtml_Lexers);
+  UiOps.AutocompleteCss_Lexers:= cfg.GetValue('autocomplete_css_lexers', UiOps.AutocompleteCss_Lexers);
+
+  UiOps.FindSuggestSel:= cfg.GetValue('find_suggest_sel', UiOps.FindSuggestSel);
+  UiOps.FindSuggestWord:= cfg.GetValue('find_suggest_cur_word', UiOps.FindSuggestWord);
+  UiOps.FindSuggestInSelection:= cfg.GetValue('find_suggest_in_selection', UiOps.FindSuggestInSelection);
+  UiOps.FindSelCase:= cfg.GetValue('find_sel_case', UiOps.FindSelCase);
+  UiOps.FindShow_FindFirst:= cfg.GetValue('find_show_findfirst', UiOps.FindShow_FindFirst);
+  UiOps.FindShow_MarkALl:= cfg.GetValue('find_show_mark_all', UiOps.FindShow_MarkALl);
+  UiOps.FindShow_SelectAll:= cfg.GetValue('find_show_select_all', UiOps.FindShow_SelectAll);
+  UiOps.FindShow_Extract:= cfg.GetValue('find_show_extract', UiOps.FindShow_Extract);
+  UiOps.FindShow_ReplaceGlobal:= cfg.GetValue('find_show_replace_global', UiOps.FindShow_ReplaceGlobal);
+  UiOps.FindIndentVert:= cfg.GetValue('find_indent_vert', UiOps.FindIndentVert);
+  UiOps.FindIndentHorz:= cfg.GetValue('find_indent_horz', UiOps.FindIndentHorz);
+  UiOps.FindMultiLineScale:= cfg.GetValue('find_multiline_scale', UiOps.FindMultiLineScale);
+  UiOps.FindSeparateForm:= cfg.GetValue('find_separate_form', UiOps.FindSeparateForm);
+
+  UiOps.TabsDisabled:= cfg.GetValue('ui_tab_disabled', UiOps.TabsDisabled);
+  UiOps.TabVarWidth:= cfg.GetValue('ui_tab_variable_width', UiOps.TabVarWidth);
+  UiOps.TabMultiline:= cfg.GetValue('ui_tab_multiline', UiOps.TabMultiline);
+  UiOps.TabAngled:= cfg.GetValue('ui_tab_angled', UiOps.TabAngled);
+  UiOps.TabFlat:= cfg.GetValue('ui_tab_flat', UiOps.TabFlat);
+  UiOps.TabWidth:= cfg.GetValue('ui_tab_size_x', UiOps.TabWidth);
+  UiOps.TabWidthMin:= cfg.GetValue('ui_tab_size_x_min', UiOps.TabWidthMin);
+  UiOps.TabWidthMax:= cfg.GetValue('ui_tab_size_x_max', UiOps.TabWidthMax);
+  UiOps.TabHeight:= cfg.GetValue('ui_tab_size_y', UiOps.TabHeight);
+   UiOps.StatusHeight:= UiOps.TabHeight;
+  UiOps.TabHeightInner:= UiOps.TabHeight-1;
+  UiOps.TabPosition:= cfg.GetValue('ui_tab_position', UiOps.TabPosition);
+  UiOps.TabColorFull:= cfg.GetValue('ui_tab_fullcolor', UiOps.TabColorFull);
+  UiOps.TabShowX:= cfg.GetValue('ui_tab_show_x', UiOps.TabShowX);
+  UiOps.TabShowXSize:= cfg.GetValue('ui_tab_show_x_size', UiOps.TabShowXSize);
+  UiOps.TabShowPlus:= cfg.GetValue('ui_tab_show_plus', UiOps.TabShowPlus);
+  UiOps.TabDblClickClose:= cfg.GetValue('ui_tab_2click_closes', UiOps.TabDblClickClose);
+  UiOps.TabNumbers:= cfg.GetValue('ui_tab_numbers', UiOps.TabNumbers);
+  UiOps.TabNewNearCurrent:= cfg.GetValue('ui_tab_new_near_current', UiOps.TabNewNearCurrent);
+  UiOps.TabRecentOnClose:= cfg.GetValue('ui_tab_recent_on_close', UiOps.TabRecentOnClose);
+  UiOps.TabButtonLayout:= cfg.GetValue('ui_tab_button_layout', UiOps.TabButtonLayout);
+  UiOps.TabPreviewFontStyle:= cfg.GetValue('ui_tab_preview_font_style', UiOps.TabPreviewFontStyle);
+  UiOps.TabSwitcherDialog:= cfg.GetValue('ui_tab_switcher_dialog', UiOps.TabSwitcherDialog);
+
+  //UiOps.ListboxCentered:= cfg.GetValue('ui_listbox_centered', UiOps.ListboxCentered);
+  UiOps.ListboxSizeX:= cfg.GetValue('ui_listbox_size_x', UiOps.ListboxSizeX);
+  UiOps.ListboxSizeY:= cfg.GetValue('ui_listbox_size_y', UiOps.ListboxSizeY);
+  UiOps.ListboxCompleteSizeX:= cfg.GetValue('ui_listbox_complete_size_x', UiOps.ListboxCompleteSizeX);
+  UiOps.ListboxCompleteSizeY:= cfg.GetValue('ui_listbox_complete_size_y', UiOps.ListboxCompleteSizeY);
+  UiOps.ListboxFuzzySearch:= cfg.GetValue('ui_listbox_fuzzy', UiOps.ListboxFuzzySearch);
+
+  UiOps.MaxHistoryEdits:= Max(0, Min(200, cfg.GetValue('ui_max_history_edits', UiOps.MaxHistoryEdits)));
+  UiOps.MaxHistoryMenu:= Max(0, Min(50, cfg.GetValue('ui_max_history_menu', UiOps.MaxHistoryMenu)));
+  UiOps.MaxHistoryFiles:= Max(0, Min(400, cfg.GetValue('ui_max_history_files', UiOps.MaxHistoryFiles)));
+
+  UiOps.EscapeClose:= cfg.GetValue('ui_esc_close', UiOps.EscapeClose);
+  UiOps.EscapeCloseConsole:= cfg.GetValue('ui_esc_close_console', UiOps.EscapeCloseConsole);
+  UiOps.ConsoleWordWrap:= cfg.GetValue('ui_console_wrap', UiOps.ConsoleWordWrap);
+  //UiOps.ConsoleCompact:= cfg.GetValue('ui_console_compact', UiOps.ConsoleCompact);
+  UiOps.InitialDir:= cfg.GetValue('ui_initial_dir', UiOps.InitialDir);
+
+  UiOps.ExportHtmlNumbers:= cfg.GetValue('export_html_numbers', UiOps.ExportHtmlNumbers);
+  UiOps.ExportHtmlFontName:= cfg.GetValue('export_html_font_name', UiOps.ExportHtmlFontName);
+  UiOps.ExportHtmlFontSize:= Abs(cfg.GetValue('export_html_font_size', UiOps.ExportHtmlFontSize));
+
+  UiOps.TreeAutoSync:= cfg.GetValue('ui_tree_auto_sync', UiOps.TreeAutoSync);
+  UiOps.TreeTimeFill:= cfg.GetValue('ui_tree_time_fill', UiOps.TreeTimeFill);
+  //UiOps.TreeTimeCaret:= cfg.GetValue('ui_tree_time_focus', UiOps.TreeTimeCaret);
+  //UiOps.TreeShowLines:= cfg.GetValue('ui_tree_show_lines', UiOps.TreeShowLines);
+  UiOps.TreeShowIcons:= cfg.GetValue('ui_tree_icons', UiOps.TreeShowIcons);
+  UiOps.TreeShowTooltips:= cfg.GetValue('ui_tree_show_tooltips', UiOps.TreeShowTooltips);
+  //UiOps.TreeCache:= cfg.GetValue('ui_tree_cache', UiOps.TreeCache);
+  UiOps.TreeFilterLayout:= cfg.GetValue('ui_tree_filter_layout', UiOps.TreeFilterLayout);
+  UiOps.TreeSublexers:= cfg.GetValue('ui_tree_sublexers', UiOps.TreeSublexers);
+
+  UiOps.PyChangeSlow:= cfg.GetValue('py_change_slow', UiOps.PyChangeSlow);
+  UiOps.PyInitLog:= cfg.GetValue('py_init_log', UiOps.PyInitLog);
+
+  UiOps.NewdocLexer:= cfg.GetValue('newdoc_lexer', UiOps.NewdocLexer);
+  UiOps.NewdocEnc:= cfg.GetValue('newdoc_encoding', UiOps.NewdocEnc);
+  UiOps.NewdocEnds:= cfg.GetValue('newdoc_ends', UiOps.NewdocEnds);
+
+  UiOps.DefaultEncUtf8:= cfg.GetValue(str_DefEncodingIsUtf8, UiOps.DefaultEncUtf8);
+  UiOps.ViewerBinaryWidth:= cfg.GetValue('viewer_binary_width', UiOps.ViewerBinaryWidth);
+
+  S:= cfg.GetValue('ui_theme', '?');
+  UiOps.ThemeUi_Loaded:= S<>'?';
+  if UiOps.ThemeUi_Loaded then
+    UiOps.ThemeUi:= S;
+
+  S:= cfg.GetValue('ui_theme_syntax', '?');
+  UiOps.ThemeSyntax_Loaded:= S<>'?';
+  if UiOps.ThemeSyntax_Loaded then
+    UiOps.ThemeSyntax:= S;
+end;
+
+
+procedure TfmMain.DoOps_LoadOptions(const fn: string; var Op: TEditorOps;
+  AllowUiOps: boolean=true; AllowGlobalOps: boolean=true);
+var
+  cfg: TJsonConfig;
+begin
+  cfg:= TJsonConfig.Create(nil);
+  try
+    try
+      cfg.Filename:= fn;
+    except
+      on E: Exception do
+      begin
+        MsgBadConfig(fn+#10#10+E.Message);
+        Exit
+      end;
+    end;
+
+    if AllowGlobalOps then
+      DoOps_LoadOptions_Global(cfg);
+
+    if AllowUiOps then
+      DoOps_LoadOptions_Ui(cfg);
+
+    DoOps_LoadOptions_UiAutoCompletion(cfg);
+    DoOps_LoadOptions_Editor(cfg, Op);
+
+  finally
+    cfg.Free;
+  end;
+end;
+
+
+procedure TfmMain.DoOps_ResetLexerSpecificOptions;
+begin
+  //some options are for lexer-specific configs.
+  //they must reset on any lexer change.
+  //otherwise, option in NN lexer will be active in MM lexer (after tab with NN focuses).
+  UiOps.AutocompleteAutoshowCharCount:= 0;
+  UiOps.AutocompleteTriggerChars:= '';
+end;
+
+procedure TfmMain.DoOps_LoadOptionsLexerSpecific(Ed: TATSynEdit);
+var
+  F: TEditorFrame;
+  Ops: TEditorOps;
+  FilenameDefault, FilenameUser, CurLexer: string;
+  bExistsDefault, bExistsUser: boolean;
+  TempOps: TATEditorTempOptions;
+begin
+  F:= GetEditorFrame(Ed);
+  if F=nil then exit;
+
+  DoOps_ResetLexerSpecificOptions;
+
+  CurLexer:= F.LexerName[Ed];
+  FilenameDefault:= GetAppLexerSpecificConfig(CurLexer, true);
+  FilenameUser:= GetAppLexerSpecificConfig(CurLexer, false);
+
+  bExistsDefault:= FileExistsUTF8(FilenameDefault);
+  bExistsUser:= FileExistsUTF8(FilenameUser);
+
+  if bExistsDefault or bExistsUser then
+  begin
+    Ops:= EditorOps;
+    EditorSaveTempOptions(Ed, TempOps);
+
+    if bExistsDefault then
+    begin
+      DoOps_LoadOptions(FilenameDefault, Ops, false, false);
+    end;
+
+    if bExistsUser then
+    begin
+      DoOps_LoadOptions(FilenameUser, Ops, false, false);
+    end;
+
+    DoApplyFrameOps(F, Ops, true);
+    EditorRestoreTempOptions(Ed, TempOps);
+  end;
+end;
+
+
+procedure TfmMain.DoOps_DialogFont_Text;
+begin
+  DoOps_DialogFont(
+    EditorOps.OpFontName,
+    EditorOps.OpFontSize,
+    str_FontName,
+    str_FontSize);
+  DoApplyFont_Text;
+end;
+
+procedure TfmMain.DoOps_DialogFont_Ui;
+begin
+  DoOps_DialogFont(
+    UiOps.VarFontName,
+    UiOps.VarFontSize,
+    str_UiFontName,
+    str_UiFontSize);
+  DoApplyFont_Ui;
+end;
+
+procedure TfmMain.DoOps_DialogFont_Output;
+begin
+  DoOps_DialogFont(
+    UiOps.OutputFontName,
+    UiOps.OutputFontSize,
+    str_UiFontOutputName,
+    str_UiFontOutputSize);
+  DoApplyFont_Output;
+end;
+
+procedure TfmMain.DoOps_FontSizeChange(AIncrement: integer);
+const
+  cMinSize = 6;
+begin
+  EditorOps.OpFontSize   := Max(cMinSize, EditorOps.OpFontSize   +AIncrement);
+  EditorOps.OpFontSize_i := Max(cMinSize, EditorOps.OpFontSize_i +AIncrement);
+  EditorOps.OpFontSize_b := Max(cMinSize, EditorOps.OpFontSize_b +AIncrement);
+  EditorOps.OpFontSize_bi:= Max(cMinSize, EditorOps.OpFontSize_bi+AIncrement);
+  DoApplyFont_Text;
+end;
+
+procedure TfmMain.DoOps_FontSizeReset;
+begin
+  EditorOps.OpFontSize:= EditorOps.OpFontSize_original;
+  EditorOps.OpFontSize_i:= EditorOps.OpFontSize_original_i;
+  EditorOps.OpFontSize_b:= EditorOps.OpFontSize_original_b;
+  EditorOps.OpFontSize_bi:= EditorOps.OpFontSize_original_bi;
+  DoApplyFont_Text;
+end;
+
+
+procedure TfmMain.DoOps_DialogFont(
+  var OpName: string; var OpSize: integer;
+  const AConfigStrName, AConfigStrSize: string);
+var
+  dlg: TFontDialog;
+  cfg: TJsonConfig;
+  fn: string;
+begin
+  fn:= AppFile_OptionsUser;
+  if not FileExistsUTF8(fn) then
+  begin
+    FCreateFile(fn, true);
+    if not FileExistsUTF8(fn) then exit;
+  end;
+
+  dlg:= TFontDialog.Create(nil);
+  try
+    dlg.Font.Name:= OpName;
+    dlg.Font.Size:= OpSize;
+    if not dlg.Execute then exit;
+    OpName:= dlg.Font.Name;
+    OpSize:= dlg.Font.Size;
+  finally
+    FreeAndNil(dlg);
+  end;
+
+  cfg:= TJSONConfig.Create(nil);
+  try
+    try
+      cfg.Formatted:= true;
+      cfg.Filename:= fn;
+      cfg.SetValue(AConfigStrName, OpName);
+      cfg.SetValue(AConfigStrSize, OpSize);
+    except
+    end;
+  finally
+    try
+      cfg.Free;
+    except
+      MsgBox(msgCannotSaveUserConf, MB_OK or MB_ICONERROR);
+    end;
+  end;
+end;
+
+procedure TfmMain.DoOps_LoadOptionsAndApplyAll;
+// called by command "settings: reload/apply config"
+var
+  Params: TAppVariantArray;
+begin
+  DoOps_LoadOptions(AppFile_OptionsUser, EditorOps);
+  DoApplyAllOps;
+  DoOps_LoadKeymap(false);
+
+  MsgStatus(msgStatusReadingOps);
+  SetLength(Params, 1);
+  Params[0]:= AppVariant(APPSTATE_CONFIG_REREAD);
+  DoPyEvent(nil, cEventOnState, Params);
+end;
+
+
